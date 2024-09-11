@@ -90,36 +90,27 @@ def calculate_et0(X, T_max, T_min, avg_temp, wind_speed, sunshine_hours, dates):
         return (0.408 * delta * (R_n - G) + gamma * (900 / (T + 273)) * u * (saturation_vapor_pressure(T) - e_a)) / (delta + gamma * (1 + 0.34 * u))
 
     # Calculate E_t0
-    E_t0 = calculate_et0(delta, R_n, G, psychrometric_constant, avg_temp, wind_speed, e_a)
+    E_t0 = np.round(calculate_et0(delta, R_n, G, psychrometric_constant, avg_temp, wind_speed, e_a), 2)
 
-    # # Combine all calculated columns 
-    # X = np.column_stack((dates, X[:, :2], avg_temp, X[:, 4:-2], delta, R_n, E_t0))
+    # Combine dates, input data (X), and calculated E_t0 into a single array
+    result_data = np.column_stack((dates, X, E_t0))
 
-    # data = np.column_stack((dates, E_t0))
+    # Create a DataFrame
+    df = pd.DataFrame(result_data, columns=['date', 'T_max', 'T_min', 'Humidity_1', 'Humidity_2', 'WindSpeed', 'Sunshine Hours', 'E_t0'])
+    
+    # Convert 'date' column to datetime
+    df['date'] = pd.to_datetime(df['date'], format='%d.%m.%Y')
 
-    # # Create DataFrame
-    # df = pd.DataFrame(data, columns=['date', 'value'])
+    # Extract month number and year
+    df['month'] = df['date'].dt.month
+    df['date'] = df['date'].dt.day
 
-    # # Convert 'date' column to datetime
-    # df['date'] = pd.to_datetime(df['date'], format='%d.%m.%Y')
+    df = df[['date', 'month', 'T_max', 'T_min', 'Humidity_1', 'Humidity_2', 'WindSpeed', 'Sunshine Hours', 'E_t0']]
 
-    # # Extract month number and year
-    # df['month'] = df['date'].dt.month
-    # df['year'] = df['date'].dt.year
+    # Write the DataFrame to a CSV file
+    df.to_csv('et0_output.csv', index=False)
 
-    # # Group by 'year' and 'month' and calculate mean
-    # result = df.groupby(['year', 'month']).agg({'value': 'mean'}).reset_index()
-
-    # # Drop the 'year' column from the final result
-    # result = result.drop(columns=['year'])
-
-    # # Round the 'value' column to 2 decimal places
-    # result['value'] = result['value'].astype(float).round(2)
-
-    # # Converting to numpy dataframe
-    # result = result.values
-
-    return np.column_stack((dates, X, E_t0))
+    return result_data
 
 data = calculate_et0(X, T_max, T_min, avg_temp, wind_speed, sunshine_hours, dates)
 print(data)
