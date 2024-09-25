@@ -63,10 +63,10 @@ def calculate_et0(X, T_max, T_min, avg_temp, wind_speed, sunshine_hours, dates):
         es = saturation_vapor_pressure(T)
         return (4098 * es) / (T + 237.3)**2
 
-    # Calculate delta (Δ) using average temperature
+    # Step 7: Calculate delta (Δ) using average temperature
     delta = np.round(slope_of_saturation_vapor_pressure(avg_temp), 2)
 
-    # Calculate e_a from average humidity
+    # Step 8: Calculate e_a from average humidity
     def actual_vapor_pressure(H, T):
         es = saturation_vapor_pressure(T)
         return (H / 100) * es
@@ -75,16 +75,13 @@ def calculate_et0(X, T_max, T_min, avg_temp, wind_speed, sunshine_hours, dates):
     avg_humidity = np.round(np.mean(X[:, [2, 3]], axis=1), 1)
     e_a = actual_vapor_pressure(avg_humidity, avg_temp)
 
-    # Calculate net shortwave radiation (R_sn)
     R_sn = net_shortwave_radiation(R_s, albedo)
 
-    # Calculate net longwave radiation (R_l)
     R_l = estimate_longwave_radiation(T_max, T_min, e_a, R_s, R_s0)
 
-    # Calculate net radiation (R_n)
     R_n = calculate_net_radiation(R_sn, R_l)
 
-    # Calculating Target Variable
+    # Step 9: Calculating Target Variable
     # Calculate E_t0 using the Penman-Monteith equation
     def calculate_et0(delta, R_n, G, gamma, T, u, e_a):
         return (0.408 * delta * (R_n - G) + gamma * (900 / (T + 273)) * u * (saturation_vapor_pressure(T) - e_a)) / (delta + gamma * (1 + 0.34 * u))
