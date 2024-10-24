@@ -3,26 +3,47 @@ import pandas as pd
 
 # Importing Dataset
 dataset = pd.read_csv('env_data.csv', skiprows=5)
-dates = dataset.iloc[:, 0].values
+
+# Extracting month from the date column
+dates = pd.to_datetime(dataset.iloc[:, 0], format='%d.%m.%Y')  # Assuming the date format is DD.MM.YYYY
+month_column = dates.dt.month  # Extracting month
+
 # T_max, T_min, Humidity_1, Humidity_2, WindSpeed, Sunshine Hours
-X = dataset.iloc[:, [1, 2, 5, 6, 9, 11]].values  # Extracting the relevant columns  
+T_max = dataset.iloc[:, 1].values  # Maximum temperature
+T_min = dataset.iloc[:, 2].values  # Minimum temperature
+Humidity_1 = dataset.iloc[:, 5].values  # Humidity_1
+Humidity_2 = dataset.iloc[:, 6].values  # Humidity_2
+WindSpeed = dataset.iloc[:, 9].values  # Wind speed in m/s
+Sunshine_Hours = dataset.iloc[:, 11].values  # Sunshine hours
 
-# Extraction of Windspeed and Sunshine Hours
-wind_speed = X[:, -2]  # Wind speed in m/s
-sunshine_hours = X[:, -1]  # Sunshine hours
+# Combine the extracted columns into a single matrix (without date)
+X = np.column_stack((month_column, T_max, T_min, Humidity_1, Humidity_2, WindSpeed, Sunshine_Hours))
 
-# Calculating Average Temperature
-avg_temp = np.round(np.mean(X[:, [0, 1]], axis=1), 1)
-T_max = X[:, 0]
-T_min = X[:, 1]
+# Create a DataFrame to store the data with appropriate column names
+df_X = pd.DataFrame(X, columns=['month', 'T_max', 'T_min', 'Humidity_1', 'Humidity_2', 'WindSpeed', 'Sunshine Hours'])
+
+# Write the DataFrame to a CSV file (without date column)
+df_X.to_csv('processed_data.csv', index=False)
 
 # Calculation of Terms required for Penman-Monteith Equation
-def calculate_et0(X, T_max, T_min, avg_temp, wind_speed, sunshine_hours, dates): 
+def calculate_et0(X): 
     # Constants
     albedo = 0.23  # Typical value for agricultural land
     sigma = 4.903e-9  # Stefan-Boltzmann constant (MJ/m²/day/K⁴)
     psychrometric_constant = 0.066  # Approx. kPa/°C
     G = 0  # Soil heat flux density (MJ/m²/day), assumed to be zero for daily calculations
+
+    # Extract data from the input matrix X
+    months = X[:, 0]
+    T_max = X[:, 1]
+    T_min = X[:, 2]
+    Humidity_1 = X[:, 3]
+    Humidity_2 = X[:, 4]
+    wind_speed = X[:, 5]
+    sunshine_hours = X[:, 6]
+
+    # Calculate Average Temperature
+    avg_temp = np.round(np.mean([T_max, T_min], axis=0), 1)
 
     # Step 1: Calculate clear-sky radiation (R_s0) using temperature
     def clear_sky_radiation(T_max, T_min):
@@ -71,14 +92,17 @@ def calculate_et0(X, T_max, T_min, avg_temp, wind_speed, sunshine_hours, dates):
         es = saturation_vapor_pressure(T)
         return (H / 100) * es
 
-    # Assuming average humidity is provided in the dataset
-    avg_humidity = np.round(np.mean(X[:, [2, 3]], axis=1), 1)
+    # Assuming average humidity is calculated from Humidity_1 and Humidity_2
+    avg_humidity = np.round(np.mean([Humidity_1, Humidity_2], axis=0), 1)
     e_a = actual_vapor_pressure(avg_humidity, avg_temp)
 
+    # Shortwave radiation
     R_sn = net_shortwave_radiation(R_s, albedo)
 
+    # Longwave radiation
     R_l = estimate_longwave_radiation(T_max, T_min, e_a, R_s, R_s0)
 
+    # Net radiation
     R_n = calculate_net_radiation(R_sn, R_l)
 
     # Step 9: Calculating Target Variable
@@ -86,28 +110,19 @@ def calculate_et0(X, T_max, T_min, avg_temp, wind_speed, sunshine_hours, dates):
     def calculate_et0(delta, R_n, G, gamma, T, u, e_a):
         return (0.408 * delta * (R_n - G) + gamma * (900 / (T + 273)) * u * (saturation_vapor_pressure(T) - e_a)) / (delta + gamma * (1 + 0.34 * u))
 
-    # Calculate E_t0
+    # Calculate E_t0 for each row in the data
     E_t0 = np.round(calculate_et0(delta, R_n, G, psychrometric_constant, avg_temp, wind_speed, e_a), 2)
 
-    # Combine dates, input data (X), and calculated E_t0 into a single array
-    result_data = np.column_stack((dates, X, E_t0))
+    # Combine input data (X) and calculated E_t0 into a single array, excluding the date column
+    result_data = np.column_stack((months, T_max, T_min, Humidity_1, Humidity_2, wind_speed, sunshine_hours, E_t0))
 
     # Create a DataFrame
-    df = pd.DataFrame(result_data, columns=['date', 'T_max', 'T_min', 'Humidity_1', 'Humidity_2', 'WindSpeed', 'Sunshine Hours', 'E_t0'])
+    df = pd.DataFrame(result_data, columns=['month', 'T_max', 'T_min', 'Humidity_1', 'Humidity_2', 'WindSpeed', 'Sunshine Hours', 'E_t0'])
     
-    # Convert 'date' column to datetime
-    df['date'] = pd.to_datetime(df['date'], format='%d.%m.%Y')
-
-    # Extract month number and year
-    df['month'] = df['date'].dt.month
-    df['date'] = df['date'].dt.day
-
-    df = df[['date', 'month', 'T_max', 'T_min', 'Humidity_1', 'Humidity_2', 'WindSpeed', 'Sunshine Hours', 'E_t0']]
-
     # Write the DataFrame to a CSV file
     df.to_csv('et0_output.csv', index=False)
 
     return result_data
 
-data = calculate_et0(X, T_max, T_min, avg_temp, wind_speed, sunshine_hours, dates)
-print(data)
+# Call the function with X (without the date column in the final output)
+data = calculate_et0(X)
