@@ -125,4 +125,4 @@ def calculate_et0(X):
     return result_data
 
 # Call the function with X (without the date column in the final output)
-data = calculate_et0(X)
+data = calculate_et0(X) 
