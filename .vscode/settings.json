@@ -1,0 +1,6 @@
+{
+    "files.exclude": {
+        "**/.mdj": true,
+        "**/.pdf": true
+    }
+}
