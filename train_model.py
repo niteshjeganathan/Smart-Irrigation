@@ -94,7 +94,7 @@ results_df = pd.DataFrame(results).T
 print(results_df)
 
 # Save the best model
-model_filename = f"best_model_{best_model_name}.pkl"
+model_filename = f"best_model.pkl"
 with open(model_filename, 'wb') as file:
     pickle.dump(best_model, file)
 print(f"Best model '{best_model_name}' with accuracy {best_score:.2f}% saved as '{model_filename}'.")
