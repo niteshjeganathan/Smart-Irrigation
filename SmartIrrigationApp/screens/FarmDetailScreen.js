@@ -99,6 +99,7 @@ const FarmDetailScreen = ({ route, navigation }) => {
             farmName,
             selectedDate: day.dateString,
           });
+          console.log(day.dateString)
         }}
         hideExtraDays={true}
         theme={{
